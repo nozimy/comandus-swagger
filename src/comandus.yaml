@@ -1,0 +1,1145 @@
+swagger: "2.0"
+info:
+  description: "Это API для проекта команды Comandus. [frontend](https://github.com/frontend-park-mail-ru/2019_2_Comandus/tree/develop),
+  [backend](https://github.com/go-park-mail-ru/2019_2_Comandus)."
+  version: "1.0.0"
+  title: "Comandus FL API Scheme (work in progress)"
+host: "comandus-api.com"
+basePath: "/api"
+consumes:
+  - application/json
+produces:
+  - application/json
+schemes:
+  - "https"
+  - "http"
+tags:
+  - name: "account"
+    description: "Operations about account"
+  - name: "client"
+    description: "заказчик"
+  - name: "freelancer"
+    description: "фрилансер"
+  - name: "job"
+    description: "проекты и вакансии"
+  - name: "proposal"
+    description: "отклики"
+  - name: "auth"
+    description: "registration, authentication, authorization"
+components:
+  securitySchemes:
+    cookieAuth: # arbitrary name for the security scheme; will be used in the "security" key later
+      type: apiKey
+      in: cookie
+      name: session_id  # cookie name
+  parameters:
+    roleCookie:
+      in: "cookie"
+      name: "role"
+      description: "client или freelancer. В каком режиме работает пользователь: как фрилансер или заказчик(клиент).
+            Если кука не передана, то возвращаем данные той роли, которая была создана вначале и задаем куку"
+paths:
+  /signup:
+    post:
+      tags:
+        - "auth"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "email"
+          required: true
+        - in: "body"
+          name: "password"
+          required: true
+        - in: "body"
+          name: "firstName"
+        - in: "body"
+          name: "lastName"
+        - in: "body"
+          name: "role"
+          description: "client(hire manager) or freelancer"
+          required: true
+      responses:
+        400:
+          description: "Не валидные данные пользователя || Пользователь уже существует."
+          schema:
+            $ref: '#/definitions/Error'
+        201:
+          description: "Аккаунт успешно создан. Возвращает данные созданного аккаунта."
+      security: []    # no authentication
+  /login:
+    post:
+      tags:
+        - "auth"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "email"
+          required: true
+        - in: "body"
+          name: "password"
+          required: true
+      responses:
+        400:
+          description: "Не указан E-Mail или пароль. || Не верный E-Mail и/или пароль"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          description: "Успешная аутентификация."
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: session_id=abcde12345; Path=/; HttpOnly
+          schema:
+            $ref: "#/definitions/Account"
+      security: []    # no authentication
+  /logout:
+    post:
+      tags:
+        - "auth"
+      security:
+        - cookieAuth: []
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Не указан E-Mail или пароль. || Не верный E-Mail и/или пароль"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          description: "Успешно. Сервер отправляет просроченный куки для удаления."
+  /roles:
+    get:
+      security:
+        - cookieAuth: []
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Role"
+  /account:
+    get:
+      tags:
+        - "account"
+      description: "Получить аккаунт"
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        403:
+          description: "user is not authorized to access this Account"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          schema:
+            $ref: "#/definitions/Account"
+    put:
+      tags:
+        - "account"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      description: "Изменить информацию аккаунта"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Updated account object"
+          required: true
+          schema:
+            $ref: "#/definitions/Account"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        403:
+          description: "user is not authorized to access this Account"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid account supplied"
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      tags:
+        - "account"
+      description: "Удалить аккаунт"
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        403:
+          description: "user is not authorized to access this Account"
+          schema:
+            $ref: '#/definitions/Error'
+  /account/upload-avatar:
+    post:
+      tags:
+        - "account"
+      description: "Загрузить новый аватар пользователя"
+      consumes:
+        - "multipart/form-data"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "file"
+          in: "formData"
+          description: "file to upload"
+          required: false
+          type: "file"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/ApiResponse"
+  /account/settings/password:
+    put:
+      tags:
+        - "account"
+      description: "Изменить пароль"
+      produces:
+        - "application/json"
+      consumes:
+        - "application/json"
+      parameters:
+        - name: "password"
+          in: "body"
+          description: "Current password"
+          required: true
+          type: "string"
+        - name: "newPassword"
+          in: "body"
+          description: "New password"
+          required: true
+          type: "string"
+        - name: "newPasswordConfirmation"
+          in: "body"
+          description: "Confirmation"
+          required: true
+          type: "string"
+      401:
+        description: "Пользователь не авторизован"
+        schema:
+          $ref: '#/definitions/Error'
+      403:
+        description: "user is not authorized to access this Account"
+        schema:
+          $ref: '#/definitions/Error'
+      400:
+        description: "Invalid passwords supplied"
+        schema:
+          $ref: '#/definitions/Error'
+
+  /account/settings/notifications:
+    put:
+      tags:
+        - "account"
+      description: "Изменить настройки уведомлений"
+  /account/settings/auth-history:
+    description: "История активности показывает информацию о том, с каких устройств и в какое время
+    Вы входили на сайт. Если Вы подозреваете, что кто-то получил доступ к Вашему профилю,
+    Вы можете в любой момент прекратить эту активность."
+    get:
+      tags:
+        - "account"
+      description: "Получить историю активности"
+  /account/settings/security-question:
+    get:
+      tags:
+        - "account"
+      description: "Получить заданный секретный вопрос"
+    put:
+      tags:
+        - "account"
+      description: "Задать секретный вопрос и ответ"
+  /account/check-security-question:
+    post:
+      tags:
+        - "account"
+      description: "Ответить на секретный вопрос"
+  #  /settings:
+  #    parameters:
+  #      - $ref: '#/components/parameters/roleCookie'
+  #    get:
+  #      produces:
+  #        - "application/json"
+  #      responses:
+  #        401:
+  #          description: "Пользователь не авторизован"
+  #          schema:
+  #            $ref: '#/definitions/Error'
+  #        200:
+  #          headers:
+  #            description: "Ответ зависит от значения куки role"
+  #            Set-Cookie:
+  #              description: "Кука задается если она не была получена в запросе"
+  #              schema:
+  #                type: string
+  #                example: role=client; Path=/;
+  #          schema:
+  #            $ref: "#/definitions/SettingsResponse"
+  #    post:
+  /company/{companyId}:
+    parameters:
+      - name: "companyId"
+        in: "path"
+        description: "ID of Company"
+        required: true
+        type: "integer"
+        format: "int64"
+    get:
+      tags:
+        - "client"
+      description: "Получить инфомрацию о компании"
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          schema:
+            $ref: "#/definitions/Company"
+        400:
+          description: "Invalid ID supplied"
+        404:
+          description: "Company not found"
+    put:
+      tags:
+        - "client"
+      description: "Обновить информацию о компании"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Updated company object"
+          required: true
+          schema:
+            $ref: "#/definitions/Company"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid company supplied"
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      tags:
+        - "client"
+      description: "Удалить компанию"
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+  /company/{companyId}/upload-avatar:
+    parameters:
+      - name: "companyId"
+        in: "path"
+        description: "ID of Company"
+        required: true
+        type: "integer"
+        format: "int64"
+    post:
+      tags:
+        - "client"
+      description: "Загрузить новый логотип компании"
+      consumes:
+        - "multipart/form-data"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "file"
+          in: "formData"
+          description: "file to upload"
+          required: false
+          type: "file"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/ApiResponse"
+
+  /freelancers/{freelancerId}:
+    parameters:
+      - $ref: '#/components/parameters/roleCookie'
+      - name: "freelancerId"
+        in: "path"
+        description: "ID of Freelancer"
+        required: true
+        type: "integer"
+        format: "int64"
+    get:
+      tags:
+        - "freelancer"
+      description: "Получить данные о фрилансере"
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          schema:
+            $ref: "#/definitions/Freelancer"
+        400:
+          description: "Invalid ID supplied"
+        404:
+          description: "Freelancer not found"
+    put:
+      tags:
+        - "freelancer"
+      description: "Обновить информацию о фрилансере"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Updated freelancer object"
+          required: true
+          schema:
+            $ref: "#/definitions/Freelancer"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid freelancer supplied"
+          schema:
+            $ref: '#/definitions/Error'
+    post:
+      tags:
+        - "freelancer"
+      description: "Создать фрилансера - у аккунта появиться роль 'фрилансер' и возможность отвечать на заказы"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "New freelancer object"
+          required: true
+          schema:
+            $ref: "#/definitions/Freelancer"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid freelancer supplied"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          description: "Успешно создан объект фрилансера"
+          schema:
+            $ref: '#/definitions/Freelancer'
+    delete:
+      tags:
+        - "freelancer"
+      description: "Удалить фрилансера"
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+  /freelancers/{freelancerId}/portfolio:
+    parameters:
+      - $ref: '#/components/parameters/roleCookie'
+      - name: "freelancerId"
+        in: "path"
+        description: "ID of Freelancer"
+        required: true
+        type: "integer"
+        format: "int64"
+    post:
+      tags:
+        - "freelancer"
+      description: "Создать портфолио"
+      consumes:
+        - "multipart/form-data"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "file"
+          in: "formData"
+          description: "file to upload"
+          required: false
+          type: "file"
+        - in: "body"
+          name: "body"
+          description: "New portfolio object"
+          required: true
+          schema:
+            $ref: "#/definitions/Portfolio"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid portfolio supplied"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          description: "Успешно создан объект portfolio"
+          schema:
+            $ref: '#/definitions/Portfolio'
+    get:
+      tags:
+        - "freelancer"
+      description: "Получить все портфолио фрилансера"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Portfolio"
+        400:
+          description: "Invalid ID supplied"
+  /freelancers/{freelancerId}/portfolio/{portfolioId}:
+    parameters:
+      - $ref: '#/components/parameters/roleCookie'
+      - name: "freelancerId"
+        in: "path"
+        description: "ID of Freelancer"
+        required: true
+        type: "integer"
+        format: "int64"
+      - name: "portfolioId"
+        in: "path"
+        description: "ID of portfolio"
+        required: true
+        type: "integer"
+        format: "int64"
+    get:
+      tags:
+        - "freelancer"
+      description: "Получить портфолио"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            $ref: "#/definitions/Portfolio"
+        400:
+          description: "Invalid ID supplied"
+    put:
+      tags:
+        - "freelancer"
+      description: "Изменить портфолио"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Updated portfolio object"
+          required: true
+          schema:
+            $ref: "#/definitions/Portfolio"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid portfolio supplied"
+          schema:
+            $ref: '#/definitions/Error'
+  /freelancers/{freelancerId}/skills:
+    parameters:
+      - $ref: '#/components/parameters/roleCookie'
+      - name: "freelancerId"
+        in: "path"
+        description: "ID of Freelancer"
+        required: true
+        type: "integer"
+        format: "int64"
+    get:
+      tags:
+        - "freelancer"
+      description: "Получить все навыки фрилансера массивом"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Skill"
+        400:
+          description: "Invalid ID supplied"
+    put:
+      tags:
+        - "freelancer"
+      description: "Изменить навыки: добавить/удалить"
+      consumes:
+        - "application/json"
+      produces:
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Updated skills array"
+          required: true
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Skill"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid portfolio supplied"
+          schema:
+            $ref: '#/definitions/Error'
+
+  /proposals:
+    get:
+      tags:
+        - "proposal"
+      description: "Получить историю работ фрилансера и/или заказчика"
+      parameters:
+        - name: "freelancerId"
+          in: "query"
+        - name: "hireManagerId"
+          in: "query"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Proposal"
+
+  /jobs:
+    parameters:
+      - $ref: '#/components/parameters/roleCookie'
+    post:
+      tags:
+        - "job"
+      description: "Добавить новый проект или вакансию"
+      consumes:
+        - "multipart/form-data"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "files"
+          in: "formData"
+          description: "files to upload"
+          required: false
+          type: "file"
+        - in: "body"
+          name: "body"
+          description: "New job object"
+          required: true
+          schema:
+            $ref: "#/definitions/Job"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid job supplied"
+          schema:
+            $ref: '#/definitions/Error'
+        200:
+          description: "Успешно создан объект Job"
+          schema:
+            $ref: '#/definitions/Job'
+    get:
+      tags:
+        - "job"
+      description: "Получить список проектов/вакансий"
+      parameters:
+        - name: "type"
+          in: "query"
+          description: "Тип работы (проект или вакансия) для фильтрации"
+          required: true
+          default: "projects"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Job"
+  /jobs/{jobId}:
+    parameters:
+      - $ref: '#/components/parameters/roleCookie'
+      - name: "jobId"
+        in: "path"
+        description: "ID of Job"
+        required: true
+        type: "integer"
+        format: "int64"
+    get:
+      tags:
+        - "job"
+      description: "Получить инфомрацию о проекте или вакансии"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            $ref: "#/definitions/Job"
+        400:
+          description: "Invalid ID supplied"
+    put:
+      tags:
+        - "job"
+      description: "Обновить информацию о работе"
+      consumes:
+        - "multipart/form-data"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "files"
+          in: "formData"
+          description: "files to upload"
+          required: false
+          scheme:
+            type: "array"
+            items:
+              type: "file"
+        - in: "body"
+          name: "body"
+          description: "New job object"
+          required: true
+          schema:
+            $ref: "#/definitions/Job"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+        400:
+          description: "Invalid job supplied"
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      tags:
+        - "job"
+      description: "Удалить работу"
+      produces:
+        - "application/json"
+      responses:
+        401:
+          description: "Пользователь не авторизован"
+          schema:
+            $ref: '#/definitions/Error'
+
+definitions:
+  Account:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      username:
+        type: "string"
+      firstName:
+        type: "string"
+      lastName:
+        type: "string"
+      email:
+        type: "string"
+      password:
+        type: "string"
+      avatar:
+        type: "string"
+  Company:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      companyName:
+        type: "string"
+      site:
+        type: "string"
+      tagline:
+        type: "string"
+      description:
+        type: "string"
+      country:
+        type: "string"
+      city:
+        type: "string"
+      address:
+        type: "string"
+      phone:
+        type: "string"
+      avatar:
+        type: "string"
+  HireManager:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      accountId:
+        type: "integer"
+        format: "int64"
+      registrationDate:
+        type: "date"
+      location:
+        type: "string"
+      companyId:
+        type: "integer"
+        format: "int64"
+  Freelancer:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      accountId:
+        type: "integer"
+        format: "int64"
+      registrationDate:
+        type: "date"
+      country:
+        type: "string"
+      city:
+        type: "string"
+      address:
+        type: "string"
+      phone:
+        type: "string"
+      tagline:
+        type: "string"
+      overview:
+        type: "string"
+        description: "overview is where we’ll store the freelancer’s description of their services, experience, and skills."
+      experienceLevelId:
+        type: "integer"
+        format: "int64"
+      specialityId:
+        type: "integer"
+        format: "int64"
+  Portfolio:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      freelancerId:
+        type: "integer"
+        format: "int64"
+      projectTitle:
+        type: "string"
+      completionDate:
+        type: "date"
+      projectDescription:
+        type: "string"
+      projectFiles:
+        type: "[string]"
+      projectUrl:
+        type: "string"
+  Skill:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      skillName:
+        type: "string"
+  HasSkill:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      freelancerId:
+        type: "integer"
+        format: "int64"
+      skillId:
+        type: "integer"
+        format: "int64"
+  Job:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      hireManagerId:
+        type: "integer"
+        format: "int64"
+      title:
+        type: "string"
+      description:
+        type: "string"
+      files:
+        type: "string"
+      specialityId:
+        type: "integer"
+        format: "int64"
+      experienceLevelId:
+        type: "integer"
+        format: "int64"
+      paymentAmount:
+        type: "decimal(8,2)"
+      country:
+        type: "string"
+      city:
+        type: "string"
+      jobTypeId:
+        type: "integer"
+        format: "int64"
+  JobType:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      name:
+        type: "string"
+        enum:
+          - "Проект"
+          - "Вакансия"
+  JobSkill:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      jobId:
+        type: "integer"
+        format: "int64"
+      skillId:
+        type: "integer"
+        format: "int64"
+  ExperienceLevel:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      experienceLevelText:
+        type: "string"
+        enum:
+          - "entry"
+          - "intermediate"
+          - "expert"
+  Category:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      name:
+        type: "string"
+  Speciality:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      categoryId:
+        type: "integer"
+        format: "int64"
+      name:
+        type: "string"
+  ProposalStatus:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      name:
+        type: "string"
+        enum:
+          - "proposal sent"
+          - "negotiation phase"
+          - "proposal withdrawn"
+          - "proposal rejected"
+          - "proposal accepted"
+          - "job started"
+          - "job finished (successfully)"
+          - "job finished (unsuccessfully)"
+  Proposal:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      jobId:
+        type: "integer"
+        format: "int64"
+      freelancerId:
+        type: "integer"
+        format: "int64"
+      proposalTime:
+        type: "date-time"
+      paymentAmount:
+        type: "decimal(8,2)"
+      currentProposalStatus:
+        type: "integer"
+        format: "int64"
+        $ref: "#/definitions/ProposalStatus"
+      clientGrade:
+        type: "integer"
+        format: "int16"
+        description: "client’s feedback for the freelancer after the job is completed."
+      clientComment:
+        type: "string"
+        description: "client’s feedback for the freelancer after the job is completed."
+      freelancerGrade:
+        type: "integer"
+        format: "int16"
+        description: "freelancer’s feedback for the client after the job is completed."
+      freelancerComment:
+        type: "string"
+        description: "freelancer’s feedback for the client after the job is completed."
+  Contract:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      proposalId:
+        type: "integer"
+        format: "int64"
+        $ref: "#/definitions/Proposal"
+      companyId:
+        type: "integer"
+        format: "int64"
+        $ref: "#/definitions/Company"
+      freelancerId:
+        type: "integer"
+        format: "int64"
+        $ref: "#/definitions/Freelancer"
+      startTime:
+        type: "timestamp"
+      endTime:
+        type: "timestamp"
+      paymentAmount:
+        type: "decimal(8,2)"
+  Message:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+      freelancerId:
+        type: "integer"
+        format: "int64"
+        $ref: "#/definitions/Freelancer"
+      hireManagerId:
+        type: "integer"
+        format: "int64"
+      messageTime:
+        type: "timestamp"
+      messageText:
+        type: "string"
+      proposalId:
+        type: "integer"
+        format: "int64"
+        $ref: "#/definitions/Proposal"
+      proposalStatusId:
+        type: "integer"
+        format: "int64"
+        $ref: "#/definitions/ProposalStatus"
+        description: "Если сообщение изменило статус Proposal, мы сохраним новый статус в атрибуте proposalStatusId
+        (и одновременно обновим Proposal.currentProposalStatus). Это один из способов отслеживания всего,
+        что происходит с Proposal (и контрактом, если таковой подписан)."
+  ApiResponse:
+    type: "object"
+    properties:
+      code:
+        type: "integer"
+        format: "int32"
+      type:
+        type: "string"
+      message:
+        type: "string"
+  Error:
+    type: object
+    properties:
+      message:
+        type: string
+        readOnly: true
+        description: |
+          Текстовое описание ошибки.
+        example: |
+          Can't find user with id #42
+  Role:
+    type: object
+    properties:
+      role:
+        type: "string"
+        enum:
+          - "client"
+          - "freelancer"
+      label:
+        type: "string"
+        description: "полное имя фрилансера или название компании"
+      avatar:
+        type: "string"
+        description: "url или бинарник?"
+  SettingsResponse:
+    type: object
+    properties:
+      account:
+        $ref: "#/definitions/Account"
+      freelancer:
+        $ref: "#/definitions/Freelancer"
+      company:
+        $ref: "#/definitions/Company"
+

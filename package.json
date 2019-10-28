@@ -1,0 +1,16 @@
+{
+  "name": "swagger",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm run copySwagger && npm run copySrc",
+    "copySrc": "cp -r src/* public",
+    "copySwagger": "cp -r node_modules/swagger-ui-dist/* public"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "swagger-ui-dist": "^3.23.11"
+  }
+}
