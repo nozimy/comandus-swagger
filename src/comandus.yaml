@@ -39,6 +39,129 @@ components:
       description: "client или freelancer. В каком режиме работает пользователь: как фрилансер или заказчик(клиент).
             Если кука не передана, то возвращаем данные той роли, которая была создана вначале и задаем куку"
 paths:
+  /search/jobs:
+    get:
+      summary: "Поиск по работам"
+      parameters:
+        - name: "q"
+          in: "query"
+          description: "Текст запроса. Поиск по job.title  и job.description"
+          required: true
+          type: "string"
+          default: ""
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/JobSearchResponse"
+        500:
+          description: "Ошибка сервера"
+          schema:
+            $ref: '#/definitions/Error'
+        503:
+          description: "Сервис недоступен"
+          schema:
+            $ref: '#/definitions/Error'
+
+  /search/freelancers:
+    get:
+      summary: "Поиск по фрилансерам"
+      parameters:
+        - name: "q"
+          in: "query"
+          description: "Текст запроса. Поиск по: имени, фамилии, tagline и description фрилансера"
+          required: true
+          type: "string"
+          default: ""
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/FreelancerSearchResponse"
+        500:
+          description: "Ошибка сервера"
+          schema:
+            $ref: '#/definitions/Error'
+        503:
+          description: "Сервис недоступен"
+          schema:
+            $ref: '#/definitions/Error'
+
+  /countries:
+    get:
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Country"
+        500:
+          description: "Ошибка сервера"
+          schema:
+            $ref: '#/definitions/Error'
+        503:
+          description: "Сервис недоступен"
+          schema:
+            $ref: '#/definitions/Error'
+  /regions/{country_id}:
+    parameters:
+      - name: "country_id"
+        in: "path"
+        description: "ID of Country"
+        required: true
+        type: "integer"
+        format: "int64"
+    get:
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Region"
+        500:
+          description: "Ошибка сервера"
+          schema:
+            $ref: '#/definitions/Error'
+        503:
+          description: "Сервис недоступен"
+          schema:
+            $ref: '#/definitions/Error'
+  /cities/{region_id}:
+    parameters:
+      - name: "region_id"
+        in: "path"
+        description: "ID of Region"
+        required: true
+        type: "integer"
+        format: "int64"
+    get:
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/City"
+        500:
+          description: "Ошибка сервера"
+          schema:
+            $ref: '#/definitions/Error'
+        503:
+          description: "Сервис недоступен"
+          schema:
+            $ref: '#/definitions/Error'
+
   /signup:
     post:
       tags:
@@ -399,6 +522,20 @@ paths:
           schema:
             $ref: "#/definitions/ApiResponse"
 
+  /freelancers:
+    get:
+      tags:
+        - "freelancer"
+      description: "Получить список фрилансеров"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/FreelancerSearchResponse"
+
   /freelancers/{freelancerId}:
     parameters:
       - $ref: '#/components/parameters/roleCookie'
@@ -718,7 +855,7 @@ paths:
           schema:
             type: "array"
             items:
-              $ref: "#/definitions/Job"
+              $ref: "#/definitions/JobSearchResponse"
   /jobs/{jobId}:
     parameters:
       - $ref: '#/components/parameters/roleCookie'
@@ -855,9 +992,9 @@ definitions:
       registrationDate:
         type: "date"
       country:
-        type: "string"
+        type: "integer"
       city:
-        type: "string"
+        type: "integer"
       address:
         type: "string"
       phone:
@@ -925,8 +1062,6 @@ definitions:
         type: "string"
       description:
         type: "string"
-      files:
-        type: "string"
       specialityId:
         type: "integer"
         format: "int64"
@@ -936,12 +1071,15 @@ definitions:
       paymentAmount:
         type: "decimal(8,2)"
       country:
-        type: "string"
+        type: "integer"
       city:
-        type: "string"
+        type: "integer"
       jobTypeId:
         type: "integer"
         format: "int64"
+      createdAt:
+        type: 'string'
+        format: 'date-time'
   JobType:
     type: "object"
     properties:
@@ -971,7 +1109,7 @@ definitions:
       id:
         type: "integer"
         format: "int64"
-      experienceLevelText:
+      name:
         type: "string"
         enum:
           - "entry"
@@ -1118,7 +1256,7 @@ definitions:
         description: |
           Текстовое описание ошибки.
         example: |
-          Can't find user with id #42
+          Текстовое описание ошибки.
   Role:
     type: object
     properties:
@@ -1142,4 +1280,76 @@ definitions:
         $ref: "#/definitions/Freelancer"
       company:
         $ref: "#/definitions/Company"
+  Country:
+    type: object
+    properties:
+      id:
+        type: "integer"
+      name:
+        type: "string"
+  Region:
+    type: object
+    properties:
+      id:
+        type: "integer"
+      country_id:
+        type: "integer"
+      name:
+        type: "string"
+  City:
+    type: object
+    properties:
+      id:
+        type: "integer"
+      region_id:
+        type: "integer"
+      name:
+        type: "string"
+  FreelancerSearchResponse:
+    allOf:
+      - $ref: '#/definitions/Freelancer'
+    type: 'object'
+    properties:
+      firstName:
+        type: "string"
+      lasttName:
+        type: "string"
+      country:
+        $ref: '#/definitions/Country'
+      city:
+        $ref: '#/definitions/City'
+      experienceLevel:
+        $ref: '#/definitions/ExperienceLevel'
+      speciality:
+        $ref: '#/definitions/Speciality'
+      skills:
+        type: "array"
+        items:
+          $ref: '#/definitions/Skill'
+      avatar:
+        type: "string"
+        description: "url на аватар"
+      feedbackCount:
+        type: "integer"
+      positiveFeedbackPercent:
+        type: "integer"
+        description: "Процент положительных отзывов"
+      rating:
+        type: "integer"
+        description: "Как считать рейтинг???"
+  JobSearchResponse:
+    allOf:
+      - $ref: '#/definitions/Job'
+    type: 'object'
+    properties:
+      proposalsCount:
+        type: "integer"
+      country:
+        $ref: '#/definitions/Country'
+      city:
+        $ref: '#/definitions/City'
+      skills:
+        type: 'array'
+        items:
+          $ref: '#/definitions/Skill'
 
